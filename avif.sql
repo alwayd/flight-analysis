@@ -1,0 +1,134 @@
+CREATE DATABASE AVI;
+USE AVI;
+
+drop table flights;
+
+CREATE TABLE Flights (
+Year INTEGER,
+MONTH INT,
+Day INT,
+DAY_OF_WEEK INT,
+AIRLINE VARCHAR(300),
+FLIGHT_NUMBER INT,
+TAIL_NUMBER VARCHAR(300),
+ORIGIN_AIRPORT VARCHAR(300),
+DESTINATION_AIRPORT VARCHAR(300),
+SCHEDULED_DEPARTURE INT,
+DEPARTURE_TIME VARCHAR(300),
+DEPARTURE_DELAY VARCHAR(300),
+TAXI_OUT VARCHAR(300),
+WHEELS_OFF VARCHAR(300),
+SCHEDULED_TIME VARCHAR(300),
+ELAPSED_TIME VARCHAR(300),
+AIR_TIME VARCHAR(300),
+DISTANCE INT,
+WHEELS_ON VARCHAR(300),
+TAXI_IN VARCHAR(300),
+SCHEDULED_ARRIVAL INT,
+ARRIVAL_TIME VARCHAR(300),
+ARRIVAL_DELAY VARCHAR(300),
+DIVERTED INT,
+CANCELLED INT,
+CANCELLATION_REASON varchar(300),
+AIR_SYSTEM_DELAY VARCHAR(300),
+SECURITY_DELAY VARCHAR(300),
+AIRLINE_DELAY VARCHAR(300),
+LATE_AIRCRAFT_DELAY VARCHAR(300),
+WEATHER_DELAY VARCHAR(300));
+
+
+LOAD DATA infile
+'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/flights.csv' INTO TABLE flights FIELDS TERMINATED BY ','; 
+
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/flights.csv'
+INTO TABLE flights
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+IGNORE 1 LINES;
+
+select * from airlines ;
+select * from airports ;
+select * from flights ;
+
+
+-- KPI 1 Weekday Vs Weekend total flights statistics
+
+SELECT 
+    CASE 
+        WHEN DAY_OF_WEEK IN (1, 7) THEN 'Weekend'
+        ELSE 'Weekday'
+    END AS Day_Type,
+    COUNT(*) AS Total_Flights
+FROM flights
+GROUP BY Day_Type;
+
+
+-- KPI 2 Total number of cancelled flights for JetBlue Airways on first date of every month
+    
+SELECT YEAR, MONTH, Day, COUNT(*) AS Total_Cancelled_Flights
+FROM flights
+WHERE AIRLINE = 'B6' AND CANCELLED = 1 AND DAY = 1
+GROUP BY YEAR, MONTH;
+
+
+-- KPI 3 Week wise, State wise and City wise statistics of delay of flights with airline details
+
+SELECT f.DAY_OF_WEEK, a.STATE, a.CITY, f.AIRLINE,
+    COUNT(*) AS DelayedFlights,
+    AVG(f.DEPARTURE_DELAY) AS AvgDepartureDelay,
+    AVG(f.ARRIVAL_DELAY) AS AvgArrivalDelay
+FROM flights f
+JOIN airports a ON f.ORIGIN_AIRPORT = a.IATA_CODE
+WHERE f.DEPARTURE_DELAY > 0 OR f.ARRIVAL_DELAY > 0
+GROUP BY f.DAY_OF_WEEK, a.STATE, a.CITY, f.AIRLINE;
+
+
+-- KPI 4 Number of airlines with No departure/arrival delay with distance covered between 2500 and 3000
+
+SELECT 
+    AIRLINE AS "Row Labels",
+    COUNT(FLIGHT_NUMBER) AS "Count of FLIGHT_NUMBER"
+FROM 
+    flights
+WHERE 
+    (DEPARTURE_DELAY IS NULL OR DEPARTURE_DELAY = 0) AND
+    (ARRIVAL_DELAY IS NULL OR ARRIVAL_DELAY = 0) AND
+    DISTANCE BETWEEN 2500 AND 3000
+GROUP BY 
+    AIRLINE
+WITH ROLLUP;
+
+
+
+
+
+SELECT COUNT(DISTINCT AIRLINE) AS NumAirlines
+FROM flights
+WHERE (DEPARTURE_DELAY IS NULL OR DEPARTURE_DELAY = 0) AND
+    (ARRIVAL_DELAY IS NULL OR ARRIVAL_DELAY = 0) AND
+    DISTANCE BETWEEN 2500 AND 3000 ;
+
+-- KPI 5 Number of flights diverted due to weather by month
+
+SELECT MONTH, COUNT(*) AS NumFlightsDiverted
+FROM flights
+WHERE DIVERTED = 1 AND WEATHER_DELAY IS NOT NULL
+GROUP BY MONTH;
+
+
+-- KPI 6 Percentage of flights canceled for each airline
+
+SELECT AIRLINE, (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM flights)) AS CancelPercentage
+FROM flights
+WHERE CANCELLED = 1
+GROUP BY AIRLINE;
+
+SELECT AIRLINE, COUNT(*) AS NumCanceledFlights, ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM flights)),2) AS CancelPercentage
+FROM flights
+WHERE CANCELLED = 1
+GROUP BY AIRLINE;
+
+
+
+
+
